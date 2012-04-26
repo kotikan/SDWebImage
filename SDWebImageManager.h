@@ -10,6 +10,8 @@
 #import "SDWebImageDownloaderDelegate.h"
 #import "SDWebImageManagerDelegate.h"
 #import "SDImageCacheDelegate.h"
+#import "SDWebImageDownloader.h"
+
 
 typedef enum
 {
@@ -27,6 +29,10 @@ typedef enum
     NSMutableDictionary *downloaderForURL;
     NSMutableArray *failedURLs;
 }
+
+@property(nonatomic, assign) SDRequestAuthenticationType authenticationType;
+@property(nonatomic, retain) NSString* username;
+@property(nonatomic, retain) NSString* password;
 
 + (id)sharedManager;
 - (UIImage *)imageWithURL:(NSURL *)url;

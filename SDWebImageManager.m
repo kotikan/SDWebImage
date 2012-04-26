@@ -18,7 +18,30 @@ typedef void(^FailureBlock)(NSError *error);
 
 static SDWebImageManager *instance;
 
+@interface SDWebImageManager ()
+
+@property(nonatomic, retain) NSString* authString;
+
+@end
+
 @implementation SDWebImageManager
+
+@synthesize authenticationType;
+@synthesize username;
+@synthesize password;
+@synthesize authString;
+
+- (void)setAuthenticationType:(SDRequestAuthenticationType)newAuthenticationType
+{
+    if (authenticationType != newAuthenticationType) {
+        authenticationType = newAuthenticationType;
+        NSAssert((authenticationType == SDRequestAuthenticationTypeNone || SDRequestAuthenticationTypeHTTPBasic), 
+                 @"authenticationType not supported: %d", 
+                 authenticationType);
+    }
+}
+
+//TODO: setters for auth details should reset authString
 
 - (id)init
 {
@@ -42,6 +65,9 @@ static SDWebImageManager *instance;
     SDWISafeRelease(cacheURLs);
     SDWISafeRelease(downloaderForURL);
     SDWISafeRelease(failedURLs);
+    SDWISafeRelease(username);
+    SDWISafeRelease(password);
+    SDWISafeRelease(authString);
     SDWISuperDealoc;
 }
 
@@ -81,6 +107,38 @@ static SDWebImageManager *instance;
     if (retryFailed) options |= SDWebImageRetryFailed;
     if (lowPriority) options |= SDWebImageLowPriority;
     [self downloadWithURL:url delegate:delegate options:options];
+}
+
+- (NSString*)authString {
+    NSLog(@"authString getter %@", @"");
+    if (authString == nil) {
+        NSLog(@"making auth string %@", @"");
+        if (self.authenticationType == SDRequestAuthenticationTypeHTTPBasic && username && password) {
+            CFHTTPMessageRef dummyRequest = CFHTTPMessageCreateRequest(kCFAllocatorDefault, 
+                                                                       (CFStringRef)@"GET", 
+                                                                       (CFURLRef)[NSURL URLWithString:@"www.example.org"], 
+                                                                       kCFHTTPVersion1_1);
+            NSLog(@"dummyRequest: %@", dummyRequest);
+            if (dummyRequest) {
+                CFHTTPMessageAddAuthentication(dummyRequest, nil, (CFStringRef)username, (CFStringRef)password, kCFHTTPAuthenticationSchemeBasic, FALSE);
+                CFStringRef authorizationString = CFHTTPMessageCopyHeaderFieldValue(dummyRequest, CFSTR("Authorization"));
+                if (authorizationString) {
+                    self.authString = (NSString*) authorizationString;
+                    CFRelease(authorizationString);
+                }
+                CFRelease(dummyRequest);
+            }
+        }
+    }
+    return authString;
+}
+
+- (NSDictionary*)userHeaders {
+    if (authenticationType == SDRequestAuthenticationTypeHTTPBasic) {
+        return [NSDictionary dictionaryWithObject:self.authString 
+                                           forKey:@"Authorization"];
+    }
+    return nil;
 }
 
 - (void)downloadWithURL:(NSURL *)url delegate:(id<SDWebImageManagerDelegate>)delegate
@@ -234,7 +292,11 @@ static SDWebImageManager *instance;
 
     if (!downloader)
     {
-        downloader = [SDWebImageDownloader downloaderWithURL:url delegate:self userInfo:info lowPriority:(options & SDWebImageLowPriority)];
+        downloader = [SDWebImageDownloader downloaderWithURL:url 
+                                                 userHeaders:[self userHeaders]
+                                                    delegate:self 
+                                                    userInfo:info 
+                                                 lowPriority:(options & SDWebImageLowPriority)];
         [downloaderForURL setObject:downloader forKey:url];
     }
     else
