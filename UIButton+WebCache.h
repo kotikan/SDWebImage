@@ -86,4 +86,9 @@
  */
 - (void)cancelCurrentImageLoad;
 
+/**
+ * Override point for loading images other than the main button image
+ */
+- (void)setPropertyWithImage:(UIImage *)image;
+
 @end

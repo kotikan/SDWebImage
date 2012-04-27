@@ -11,6 +11,12 @@
 
 @implementation UIButton (WebCache)
 
+- (void)setPropertyWithImage:(UIImage *)image {
+    [self setImage:image forState:UIControlStateNormal];
+    [self setImage:image forState:UIControlStateSelected];
+    [self setImage:image forState:UIControlStateHighlighted];
+}
+
 - (void)setImageWithURL:(NSURL *)url
 {
     [self setImageWithURL:url placeholderImage:nil];
@@ -28,7 +34,7 @@
     // Remove in progress downloader from queue
     [manager cancelForDelegate:self];
 
-    [self setImage:placeholder forState:UIControlStateNormal];
+    [self setPropertyWithImage:placeholder];
 
     if (url)
     {
@@ -54,7 +60,7 @@
     // Remove in progress downloader from queue
     [manager cancelForDelegate:self];
 
-    [self setImage:placeholder forState:UIControlStateNormal];
+    [self setPropertyWithImage:placeholder];
 
     if (url)
     {
@@ -70,9 +76,7 @@
 
 - (void)webImageManager:(SDWebImageManager *)imageManager didFinishWithImage:(UIImage *)image
 {
-    [self setImage:image forState:UIControlStateNormal];
-    [self setImage:image forState:UIControlStateSelected];
-    [self setImage:image forState:UIControlStateHighlighted];
+    [self setPropertyWithImage:image];
 }
 
 @end
