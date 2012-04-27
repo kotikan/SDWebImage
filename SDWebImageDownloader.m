@@ -196,6 +196,7 @@ NSString *const SDWebImageDownloadStopNotification = @"SDWebImageDownloadStopNot
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     SDWISafeRelease(url);
+    SDWISafeRelease(userHeaders);
     SDWISafeRelease(connection);
     SDWISafeRelease(imageData);
     SDWISafeRelease(userInfo);
