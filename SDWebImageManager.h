@@ -28,13 +28,11 @@ typedef enum
     NSMutableArray *cacheURLs;
     NSMutableDictionary *downloaderForURL;
     NSMutableArray *failedURLs;
+    NSMutableDictionary* settingsPerDomain;
 }
 
-@property(nonatomic, assign) SDRequestAuthenticationType authenticationType;
-@property(nonatomic, retain) NSString* username;
-@property(nonatomic, retain) NSString* password;
-
 + (id)sharedManager;
+- (void)setBasicAuthUsername:(NSString*)username password:(NSString*)password forDomain:(NSString*)domain;
 - (UIImage *)imageWithURL:(NSURL *)url;
 - (void)downloadWithURL:(NSURL *)url delegate:(id<SDWebImageManagerDelegate>)delegate;
 - (void)downloadWithURL:(NSURL *)url delegate:(id<SDWebImageManagerDelegate>)delegate options:(SDWebImageOptions)options;

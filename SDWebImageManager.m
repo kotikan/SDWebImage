@@ -16,15 +16,20 @@ typedef void(^SuccessBlock)(UIImage *image);
 typedef void(^FailureBlock)(NSError *error);
 #endif
 
-static SDWebImageManager *instance;
+#pragma mark - SDWebImageManagerDomainSettings
 
-@interface SDWebImageManager ()
+@interface SDWebImageManagerDomainSettings : NSObject
 
+@property(nonatomic, assign) SDRequestAuthenticationType authenticationType;
+@property(nonatomic, retain) NSString* username;
+@property(nonatomic, retain) NSString* password;
 @property(nonatomic, retain) NSString* authString;
+
+- (NSDictionary*)headers;
 
 @end
 
-@implementation SDWebImageManager
+@implementation SDWebImageManagerDomainSettings
 
 @synthesize authenticationType;
 @synthesize username;
@@ -41,7 +46,62 @@ static SDWebImageManager *instance;
     }
 }
 
-//TODO: setters for auth details should reset authString
+- (NSString*)authString {
+    NSLog(@"authString getter %@", @"");
+    if (authString == nil) {
+        NSLog(@"making auth string %@", @"");
+        if (self.authenticationType == SDRequestAuthenticationTypeHTTPBasic && username && password) {
+            CFHTTPMessageRef dummyRequest = CFHTTPMessageCreateRequest(kCFAllocatorDefault, 
+                                                                       (CFStringRef)@"GET", 
+                                                                       (CFURLRef)[NSURL URLWithString:@"www.example.org"], 
+                                                                       kCFHTTPVersion1_1);
+            NSLog(@"dummyRequest: %@", dummyRequest);
+            if (dummyRequest) {
+                CFHTTPMessageAddAuthentication(dummyRequest, nil, (CFStringRef)username, (CFStringRef)password, kCFHTTPAuthenticationSchemeBasic, FALSE);
+                CFStringRef authorizationString = CFHTTPMessageCopyHeaderFieldValue(dummyRequest, CFSTR("Authorization"));
+                if (authorizationString) {
+                    self.authString = (NSString*) authorizationString;
+                    CFRelease(authorizationString);
+                }
+                CFRelease(dummyRequest);
+            }
+        }
+    }
+    return authString;
+}
+
+- (NSDictionary*)headers {
+    if (authenticationType == SDRequestAuthenticationTypeHTTPBasic) {
+        return [NSDictionary dictionaryWithObject:self.authString 
+                                           forKey:@"Authorization"];
+    }
+    return nil;
+}
+
+- (void)dealloc {
+    SDWISafeRelease(username);
+    SDWISafeRelease(password);
+    SDWISafeRelease(authString);
+    SDWISuperDealoc;
+}
+
+@end
+
+#pragma mark - SDWebImageManager
+
+static SDWebImageManager *instance;
+
+@implementation SDWebImageManager
+
+- (void)setBasicAuthUsername:(NSString*)username password:(NSString*)password forDomain:(NSString*)domain {
+    SDWebImageManagerDomainSettings* settings = [[SDWebImageManagerDomainSettings alloc] init];
+    settings.authenticationType = SDRequestAuthenticationTypeHTTPBasic;
+    settings.username = username;
+    settings.password = password;
+    [settingsPerDomain setObject:settings 
+                          forKey:domain]; 
+    [settings release];
+}
 
 - (id)init
 {
@@ -53,6 +113,7 @@ static SDWebImageManager *instance;
         cacheURLs = [[NSMutableArray alloc] init];
         downloaderForURL = [[NSMutableDictionary alloc] init];
         failedURLs = [[NSMutableArray alloc] init];
+        settingsPerDomain = [[NSMutableDictionary alloc] init];
     }
     return self;
 }
@@ -65,9 +126,7 @@ static SDWebImageManager *instance;
     SDWISafeRelease(cacheURLs);
     SDWISafeRelease(downloaderForURL);
     SDWISafeRelease(failedURLs);
-    SDWISafeRelease(username);
-    SDWISafeRelease(password);
-    SDWISafeRelease(authString);
+    SDWISafeRelease(settingsPerDomain);
     SDWISuperDealoc;
 }
 
@@ -109,36 +168,8 @@ static SDWebImageManager *instance;
     [self downloadWithURL:url delegate:delegate options:options];
 }
 
-- (NSString*)authString {
-    NSLog(@"authString getter %@", @"");
-    if (authString == nil) {
-        NSLog(@"making auth string %@", @"");
-        if (self.authenticationType == SDRequestAuthenticationTypeHTTPBasic && username && password) {
-            CFHTTPMessageRef dummyRequest = CFHTTPMessageCreateRequest(kCFAllocatorDefault, 
-                                                                       (CFStringRef)@"GET", 
-                                                                       (CFURLRef)[NSURL URLWithString:@"www.example.org"], 
-                                                                       kCFHTTPVersion1_1);
-            NSLog(@"dummyRequest: %@", dummyRequest);
-            if (dummyRequest) {
-                CFHTTPMessageAddAuthentication(dummyRequest, nil, (CFStringRef)username, (CFStringRef)password, kCFHTTPAuthenticationSchemeBasic, FALSE);
-                CFStringRef authorizationString = CFHTTPMessageCopyHeaderFieldValue(dummyRequest, CFSTR("Authorization"));
-                if (authorizationString) {
-                    self.authString = (NSString*) authorizationString;
-                    CFRelease(authorizationString);
-                }
-                CFRelease(dummyRequest);
-            }
-        }
-    }
-    return authString;
-}
-
-- (NSDictionary*)userHeaders {
-    if (authenticationType == SDRequestAuthenticationTypeHTTPBasic) {
-        return [NSDictionary dictionaryWithObject:self.authString 
-                                           forKey:@"Authorization"];
-    }
-    return nil;
+- (NSDictionary*)userHeadersForUrl:(NSURL*)url {
+    return [((SDWebImageManagerDomainSettings*)[settingsPerDomain objectForKey:[url host]]) headers];
 }
 
 - (void)downloadWithURL:(NSURL *)url delegate:(id<SDWebImageManagerDelegate>)delegate
@@ -293,7 +324,7 @@ static SDWebImageManager *instance;
     if (!downloader)
     {
         downloader = [SDWebImageDownloader downloaderWithURL:url 
-                                                 userHeaders:[self userHeaders]
+                                                 userHeaders:[self userHeadersForUrl:url]
                                                     delegate:self 
                                                     userInfo:info 
                                                  lowPriority:(options & SDWebImageLowPriority)];
