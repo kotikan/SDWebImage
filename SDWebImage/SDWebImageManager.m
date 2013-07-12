@@ -11,10 +11,6 @@
 #import "SDWebImageDownloader.h"
 #import <objc/message.h>
 
-#if NS_BLOCKS_AVAILABLE
-@synthesize cacheKeyFilter;
-#endif
-
 #pragma mark - SDWebImageManagerDomainSettings
 
 @interface SDWebImageManagerDomainSettings : NSObject
@@ -51,15 +47,27 @@
         NSLog(@"making auth string %@", @"");
         if (self.authenticationType == SDRequestAuthenticationTypeHTTPBasic && username && password) {
             CFHTTPMessageRef dummyRequest = CFHTTPMessageCreateRequest(kCFAllocatorDefault, 
-                                                                       (CFStringRef)@"GET", 
-                                                                       (CFURLRef)[NSURL URLWithString:@"www.example.org"], 
+                                                                       (CFStringRef)@"GET",
+#if __has_feature(objc_arc)
+                                                                       (__bridge CFURLRef)[NSURL URLWithString:@"www.example.org"],
+#else
+                                                                       (CFURLRef)[NSURL URLWithString:@"www.example.org"],
+#endif
                                                                        kCFHTTPVersion1_1);
             NSLog(@"dummyRequest: %@", dummyRequest);
             if (dummyRequest) {
+#if __has_feature(objc_arc)
+                CFHTTPMessageAddAuthentication(dummyRequest, nil, (__bridge CFStringRef)username, (__bridge CFStringRef)password, kCFHTTPAuthenticationSchemeBasic, FALSE);
+#else
                 CFHTTPMessageAddAuthentication(dummyRequest, nil, (CFStringRef)username, (CFStringRef)password, kCFHTTPAuthenticationSchemeBasic, FALSE);
+#endif
                 CFStringRef authorizationString = CFHTTPMessageCopyHeaderFieldValue(dummyRequest, CFSTR("Authorization"));
                 if (authorizationString) {
+#if __has_feature(objc_arc)
+                    self.authString = (__bridge NSString*) authorizationString;
+#else
                     self.authString = (NSString*) authorizationString;
+#endif
                     CFRelease(authorizationString);
                 }
                 CFRelease(dummyRequest);
@@ -92,14 +100,19 @@ static SDWebImageManager *instance;
 
 @implementation SDWebImageManager
 
+#if NS_BLOCKS_AVAILABLE
+@synthesize cacheKeyFilter;
+#endif
+
 - (void)setBasicAuthUsername:(NSString*)username password:(NSString*)password forDomain:(NSString*)domain {
     SDWebImageManagerDomainSettings* settings = [[SDWebImageManagerDomainSettings alloc] init];
     settings.authenticationType = SDRequestAuthenticationTypeHTTPBasic;
     settings.username = username;
     settings.password = password;
-    [settingsPerDomain setObject:settings 
-                          forKey:domain]; 
+    [settingsPerDomain setObject:settings forKey:domain];
+#if !__has_feature(objc_arc)
     [settings release];
+#endif
 }
 
 - (id)init

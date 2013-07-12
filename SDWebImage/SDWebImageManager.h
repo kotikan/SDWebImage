@@ -51,6 +51,7 @@ typedef void(^SDWebImageFailureBlock)(NSError *error);
     NSMutableArray *cacheURLs;
     NSMutableDictionary *downloaderForURL;
     NSMutableArray *failedURLs;
+    NSMutableDictionary* settingsPerDomain;
 }
 
 #if NS_BLOCKS_AVAILABLE
@@ -79,6 +80,8 @@ typedef NSString *(^CacheKeyFilter)(NSURL *url);
  * @return SDWebImageManager shared instance
  */
 + (id)sharedManager;
+
+- (void)setBasicAuthUsername:(NSString*)username password:(NSString*)password forDomain:(NSString*)domain;
 
 - (UIImage *)imageWithURL:(NSURL *)url __attribute__ ((deprecated));
 
