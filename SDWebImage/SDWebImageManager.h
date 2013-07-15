@@ -117,6 +117,8 @@ typedef NSString *(^CacheKeyFilter)(NSURL *url);
  */
 - (void)downloadWithURL:(NSURL *)url delegate:(id<SDWebImageManagerDelegate>)delegate options:(SDWebImageOptions)options userInfo:(NSDictionary *)info;
 
+- (void)downloadWithURL:(NSURL *)url delegate:(id<SDWebImageManagerDelegate>)delegate newSize:(CGSize)newSize focusPercentPoint:(CGPoint)focusPoint;
+
 // use options:SDWebImageRetryFailed instead
 - (void)downloadWithURL:(NSURL *)url delegate:(id<SDWebImageManagerDelegate>)delegate retryFailed:(BOOL)retryFailed __attribute__ ((deprecated));
 // use options:SDWebImageRetryFailed|SDWebImageLowPriority instead
@@ -141,12 +143,25 @@ typedef NSString *(^CacheKeyFilter)(NSURL *url);
  * @param url The URL to the image
  * @param delegate The delegate object used to send result back
  * @param options A mask to specify options to use for this request
+ * @param success A block called when image has been retrived successfuly
+ * @param failure A block called when couldn't be retrived for some reason
+ * @see [SDWebImageManager downloadWithURL:delegate:options:]
+ */
+- (void)downloadWithURL:(NSURL *)url delegate:(id)delegate options:(SDWebImageOptions)options newSize:(CGSize)newSize focusPercentPoint:(CGPoint)focusPoint success:(SDWebImageSuccessBlock)success failure:(SDWebImageFailureBlock)failure;
+
+/**
+ * Downloads the image at the given URL if not present in cache or return the cached version otherwise.
+ *
+ * @param url The URL to the image
+ * @param delegate The delegate object used to send result back
+ * @param options A mask to specify options to use for this request
  * @param info An NSDictionnary passed back to delegate if provided
  * @param success A block called when image has been retrived successfuly
  * @param failure A block called when couldn't be retrived for some reason
  * @see [SDWebImageManager downloadWithURL:delegate:options:]
  */
 - (void)downloadWithURL:(NSURL *)url delegate:(id)delegate options:(SDWebImageOptions)options userInfo:(NSDictionary *)info success:(SDWebImageSuccessBlock)success failure:(SDWebImageFailureBlock)failure;
+
 #endif
 
 /**

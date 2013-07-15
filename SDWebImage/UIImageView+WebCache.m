@@ -7,6 +7,7 @@
  */
 
 #import "UIImageView+WebCache.h"
+#import "UIImage+FocusCrop.h"
 
 @implementation UIImageView (WebCache)
 
@@ -35,6 +36,21 @@
     }
 }
 
+- (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder focusPercentPoint:(CGPoint)focusPoint
+{
+    SDWebImageManager *manager = [SDWebImageManager sharedManager];
+    
+    // Remove in progress downloader from queue
+    [manager cancelForDelegate:self];
+    
+    self.image = placeholder;
+    
+    if (url)
+    {
+        [manager downloadWithURL:url delegate:self newSize:self.frame.size focusPercentPoint:focusPoint];
+    }
+}
+
 #if NS_BLOCKS_AVAILABLE
 - (void)setImageWithURL:(NSURL *)url success:(SDWebImageSuccessBlock)success failure:(SDWebImageFailureBlock)failure;
 {
@@ -44,6 +60,21 @@
 - (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder success:(SDWebImageSuccessBlock)success failure:(SDWebImageFailureBlock)failure;
 {
     [self setImageWithURL:url placeholderImage:placeholder options:0 success:success failure:failure];
+}
+
+- (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options focusPercentPoint:(CGPoint)focusPoint success:(SDWebImageSuccessBlock)success failure:(SDWebImageFailureBlock)failure
+{
+    SDWebImageManager *manager = [SDWebImageManager sharedManager];
+    
+    // Remove in progress downloader from queue
+    [manager cancelForDelegate:self];
+    
+    self.image = placeholder;
+    
+    if (url)
+    {
+        [manager downloadWithURL:url delegate:self options:options newSize:self.frame.size focusPercentPoint:focusPoint success:success failure:failure];
+    }
 }
 
 - (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options success:(SDWebImageSuccessBlock)success failure:(SDWebImageFailureBlock)failure;

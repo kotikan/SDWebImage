@@ -75,6 +75,17 @@
  */
 - (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options;
 
+/**
+ * Set the imageView `image` with an `url`, placeholder and focus point
+ *
+ * The downloand is asynchronous and cached.
+ *
+ * @param url The url for the image.
+ * @param placeholder The image to be set initially, until the image request finishes.
+ * @param focusPercentPoint The interesting part of the image to be prefered in an aspect fill
+ */
+- (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder focusPercentPoint:(CGPoint)focusPoint;
+
 #if NS_BLOCKS_AVAILABLE
 /**
  * Set the imageView `image` with an `url`.
@@ -98,6 +109,19 @@
  * @param failure A block object to be executed when the image request failed. This block has no return value and takes the error object describing the network or parsing error that occurred (may be nil).
  */
 - (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder success:(SDWebImageSuccessBlock)success failure:(SDWebImageFailureBlock)failure;
+
+/**
+ * Set the imageView `image` with an `url`, placeholder.
+ *
+ * The downloand is asynchronous and cached.
+ *
+ * @param url The url for the image.
+ * @param placeholder The image to be set initially, until the image request finishes.
+ * @param focusPercentPoint The interesting part of the image to be prefered in an aspect fill
+ * @param success A block to be executed when the image request succeed This block has no return value and takes the retrieved image as argument.
+ * @param failure A block object to be executed when the image request failed. This block has no return value and takes the error object describing the network or parsing error that occurred (may be nil).
+ */
+- (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options focusPercentPoint:(CGPoint)focusPoint success:(SDWebImageSuccessBlock)success failure:(SDWebImageFailureBlock)failure;
 
 /**
  * Set the imageView `image` with an `url`, placeholder and custom options.

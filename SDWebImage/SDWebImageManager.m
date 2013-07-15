@@ -9,6 +9,7 @@
 #import "SDWebImageManager.h"
 #import "SDImageCache.h"
 #import "SDWebImageDownloader.h"
+#import "UIImage+FocusCrop.h"
 #import <objc/message.h>
 
 #pragma mark - SDWebImageManagerDomainSettings
@@ -212,6 +213,17 @@ static SDWebImageManager *instance;
     [self downloadWithURL:url delegate:delegate options:options userInfo:nil];
 }
 
+- (void)downloadWithURL:(NSURL *)url delegate:(id<SDWebImageManagerDelegate>)delegate newSize:(CGSize)newSize focusPercentPoint:(CGPoint)focusPoint
+{
+    NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
+                              [NSNumber numberWithFloat:newSize.width],@"newWidth",
+                              [NSNumber numberWithFloat:newSize.height],@"newHeight",
+                              [NSNumber numberWithFloat:focusPoint.x],@"focusX",
+                              [NSNumber numberWithFloat:focusPoint.y],@"focusY",
+                              nil];
+    [self downloadWithURL:url delegate:delegate options:0 userInfo:userInfo];
+}
+
 - (void)downloadWithURL:(NSURL *)url delegate:(id<SDWebImageManagerDelegate>)delegate options:(SDWebImageOptions)options userInfo:(NSDictionary *)userInfo
 {
     // Very common mistake is to send the URL using NSString object instead of NSURL. For some strange reason, XCode won't
@@ -246,6 +258,17 @@ static SDWebImageManager *instance;
 - (void)downloadWithURL:(NSURL *)url delegate:(id)delegate options:(SDWebImageOptions)options success:(SDWebImageSuccessBlock)success failure:(SDWebImageFailureBlock)failure
 {
     [self downloadWithURL:url delegate:delegate options:options userInfo:nil success:success failure:failure];
+}
+
+- (void)downloadWithURL:(NSURL *)url delegate:(id)delegate options:(SDWebImageOptions)options newSize:(CGSize)newSize focusPercentPoint:(CGPoint)focusPoint success:(SDWebImageSuccessBlock)success failure:(SDWebImageFailureBlock)failure
+{
+    NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
+                              [NSNumber numberWithFloat:newSize.width],@"newWidth",
+                              [NSNumber numberWithFloat:newSize.height],@"newHeight",
+                              [NSNumber numberWithFloat:focusPoint.x],@"focusX",
+                              [NSNumber numberWithFloat:focusPoint.y],@"focusY",
+                              nil];
+    [self downloadWithURL:url delegate:delegate options:options userInfo:userInfo success:success failure:failure];
 }
 
 - (void)downloadWithURL:(NSURL *)url delegate:(id)delegate options:(SDWebImageOptions)options userInfo:(NSDictionary *)userInfo success:(SDWebImageSuccessBlock)success failure:(SDWebImageFailureBlock)failure
@@ -355,10 +378,29 @@ static SDWebImageManager *instance;
     return NSNotFound;
 }
 
+- (UIImage *)resize:(UIImage *)image withFocusFromUserInfo:(NSDictionary *)userInfo
+{
+    UIImage *newImage=image;
+    if (userInfo != nil && [userInfo isKindOfClass:[NSDictionary class]] && [userInfo objectForKey:@"focusX"] != nil) {
+        CGSize newSize;
+        newSize.width = [[userInfo objectForKey:@"newWidth"] floatValue];
+        newSize.height = [[userInfo objectForKey:@"newHeight"] floatValue];
+        CGPoint focusPoint;
+        focusPoint.x = [[userInfo objectForKey:@"focusX"] floatValue];
+        focusPoint.y = [[userInfo objectForKey:@"focusY"] floatValue];
+        newImage = [image resizeToSize:newSize withFocusPercentPoint:focusPoint];
+    }
+    return newImage;
+}
+
 - (void)imageCache:(SDImageCache *)imageCache didFindImage:(UIImage *)image forKey:(NSString *)key userInfo:(NSDictionary *)info
 {
     NSURL *url = [info objectForKey:@"url"];
     id<SDWebImageManagerDelegate> delegate = [info objectForKey:@"delegate"];
+    
+    UIImage *newImage = image;
+    NSDictionary *userInfo = [info objectForKey:@"userInfo"];
+    newImage = [self resize:image withFocusFromUserInfo:userInfo];
     
     NSUInteger idx = [self indexOfDelegate:delegate waitingForURL:url];
     if (idx == NSNotFound)
@@ -369,20 +411,19 @@ static SDWebImageManager *instance;
     
     if ([delegate respondsToSelector:@selector(webImageManager:didFinishWithImage:)])
     {
-        [delegate performSelector:@selector(webImageManager:didFinishWithImage:) withObject:self withObject:image];
+        [delegate performSelector:@selector(webImageManager:didFinishWithImage:) withObject:self withObject:newImage];
     }
     if ([delegate respondsToSelector:@selector(webImageManager:didFinishWithImage:forURL:)])
     {
-        objc_msgSend(delegate, @selector(webImageManager:didFinishWithImage:forURL:), self, image, url);
+        objc_msgSend(delegate, @selector(webImageManager:didFinishWithImage:forURL:), self, newImage, url);
     }
     if ([delegate respondsToSelector:@selector(webImageManager:didFinishWithImage:forURL:userInfo:)])
     {
-        NSDictionary *userInfo = [info objectForKey:@"userInfo"];
         if ([userInfo isKindOfClass:NSNull.class])
         {
             userInfo = nil;
         }
-        objc_msgSend(delegate, @selector(webImageManager:didFinishWithImage:forURL:userInfo:), self, image, url, userInfo);
+        objc_msgSend(delegate, @selector(webImageManager:didFinishWithImage:forURL:userInfo:), self, newImage, url, userInfo);
     }
 #if NS_BLOCKS_AVAILABLE
     if ([info objectForKey:@"success"])
@@ -507,6 +548,7 @@ static SDWebImageManager *instance;
 {
     SDWIRetain(downloader);
     SDWebImageOptions options = [[downloader.userInfo objectForKey:@"options"] intValue];
+    
     BOOL found = YES;
     while (found)
     {
@@ -528,24 +570,27 @@ static SDWebImageManager *instance;
             SDWIRetain(info);
             SDWIAutorelease(info);
             
-            if (image)
+            UIImage *newImage = image;
+            NSDictionary *userInfo = [info objectForKey:@"userInfo"];
+            newImage = [self resize:image withFocusFromUserInfo:userInfo];
+            
+            if (newImage)
             {
                 if ([delegate respondsToSelector:@selector(webImageManager:didFinishWithImage:)])
                 {
-                    [delegate performSelector:@selector(webImageManager:didFinishWithImage:) withObject:self withObject:image];
+                    [delegate performSelector:@selector(webImageManager:didFinishWithImage:) withObject:self withObject:newImage];
                 }
                 if ([delegate respondsToSelector:@selector(webImageManager:didFinishWithImage:forURL:)])
                 {
-                    objc_msgSend(delegate, @selector(webImageManager:didFinishWithImage:forURL:), self, image, downloader.url);
+                    objc_msgSend(delegate, @selector(webImageManager:didFinishWithImage:forURL:), self, newImage, downloader.url);
                 }
                 if ([delegate respondsToSelector:@selector(webImageManager:didFinishWithImage:forURL:userInfo:)])
                 {
-                    NSDictionary *userInfo = [info objectForKey:@"userInfo"];
                     if ([userInfo isKindOfClass:NSNull.class])
                     {
                         userInfo = nil;
                     }
-                    objc_msgSend(delegate, @selector(webImageManager:didFinishWithImage:forURL:userInfo:), self, image, downloader.url, userInfo);
+                    objc_msgSend(delegate, @selector(webImageManager:didFinishWithImage:forURL:userInfo:), self, newImage, downloader.url, userInfo);
                 }
 #if NS_BLOCKS_AVAILABLE
                 if ([info objectForKey:@"success"])
@@ -567,7 +612,6 @@ static SDWebImageManager *instance;
                 }
                 if ([delegate respondsToSelector:@selector(webImageManager:didFailWithError:forURL:userInfo:)])
                 {
-                    NSDictionary *userInfo = [info objectForKey:@"userInfo"];
                     if ([userInfo isKindOfClass:NSNull.class])
                     {
                         userInfo = nil;
