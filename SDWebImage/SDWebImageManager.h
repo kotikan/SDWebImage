@@ -16,7 +16,8 @@ typedef enum
     SDWebImageRetryFailed = 1 << 0,
     SDWebImageLowPriority = 1 << 1,
     SDWebImageCacheMemoryOnly = 1 << 2,
-    SDWebImageProgressiveDownload = 1 << 3
+    SDWebImageProgressiveDownload = 1 << 3,
+    SDWebImageActivityIndicator = 1 << 4
 } SDWebImageOptions;
 
 #if NS_BLOCKS_AVAILABLE
